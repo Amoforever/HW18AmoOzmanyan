@@ -1,0 +1,61 @@
+import Foundation
+
+var shelf = Array<Chip>()
+let cond = NSCondition()
+var available = false
+
+public struct Chip {
+    public enum ChipType: UInt32 {
+        case small = 1
+        case medium
+        case big
+    }
+    
+    public let chipType: ChipType
+    
+    public static func make() -> Chip {
+        guard let chipType = Chip.ChipType(rawValue: UInt32(arc4random_uniform(3) + 1)) else {
+            fatalError("Incorrect random value")
+        }
+        
+        return Chip(chipType: chipType)
+    }
+    
+    public func soldering() {
+        let solderingTime = chipType.rawValue
+        sleep(UInt32(solderingTime))
+        print("Я припаял микросхему.")
+    }
+}
+
+
+var makerThread = Thread {
+    for _ in 1...10 {
+        cond.lock()
+        shelf.insert(Chip.make(), at: 0)
+        print("Я сделал.")
+        available = true
+        cond.signal()
+        cond.unlock()
+        sleep(2)
+    }
+}
+
+var bakerThread = Thread {
+    for _ in 1...10 {
+        while (!available) {
+            cond.wait()
+        }
+        
+        shelf.removeFirst().soldering()
+        
+        if shelf.count < 1 {
+            available = false
+        }
+       
+    }
+    
+}
+
+makerThread.start()
+bakerThread.start()
